@@ -53,7 +53,9 @@ def run_receiver(host=RECEIVER_HOST, port=RECEIVER_PORT, key=KEY):
         while True:
             connection, address = receiver_socket.accept()
             print(f"Sender terhubung: {address}")
-            run_chat(connection, "Receiver", "Sender", key)
+            if run_chat(connection, "Receiver", "Sender", key):
+                print("Perintah exit diterima. Receiver berhenti.")
+                break
             print("Menunggu koneksi sender berikutnya...")
 
 
