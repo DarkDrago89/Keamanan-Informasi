@@ -1,7 +1,7 @@
 """Konfigurasi jaringan dan kriptografi untuk sender-receiver."""
 
 # Ubah nilai ini di komputer sender menjadi IPv4 komputer receiver pada Wi-Fi.
-RECEIVER_IP = "192.168.1.22"
+RECEIVER_IP = "192.168.1.2"
 
 # Receiver mendengarkan semua interface jaringan komputer receiver.
 RECEIVER_HOST = "0.0.0.0"
