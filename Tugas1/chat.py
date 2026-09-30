@@ -2,6 +2,7 @@
 
 import socket
 import threading
+from queue import Empty, Queue
 
 from config import KEY, MAX_MESSAGE_SIZE
 from encryption import decrypt_message, encrypt_message, frame_message, receive_frame
@@ -10,7 +11,9 @@ from encryption import decrypt_message, encrypt_message, frame_message, receive_
 def run_chat(connection, local_name, remote_name, key=KEY):
     """Send and receive encrypted messages until either side closes."""
     stop_event = threading.Event()
+    exit_event = threading.Event()
     print_lock = threading.Lock()
+    input_queue = Queue()
 
     def receive_messages():
         while not stop_event.is_set():
@@ -23,6 +26,13 @@ def run_chat(connection, local_name, remote_name, key=KEY):
                     return
 
                 plaintext = decrypt_message(encoded_message, key)
+                if plaintext.lower() == "exit":
+                    with print_lock:
+                        print(f"\n{remote_name} keluar dari chat.")
+                    exit_event.set()
+                    stop_event.set()
+                    return
+
                 with print_lock:
                     print(f"\nCiphertext diterima dari {remote_name}:")
                     print(encoded_message.decode("ascii"))
@@ -34,18 +44,33 @@ def run_chat(connection, local_name, remote_name, key=KEY):
                     stop_event.set()
                 return
 
+    def read_input():
+        while not stop_event.is_set():
+            try:
+                input_queue.put(input(f"\n{local_name}: "))
+            except (EOFError, KeyboardInterrupt):
+                input_queue.put(None)
+                return
+
     receiver_thread = threading.Thread(target=receive_messages, daemon=True)
     receiver_thread.start()
+    input_thread = threading.Thread(target=read_input, daemon=True)
+    input_thread.start()
     print("Koneksi dua arah aktif. Ketik pesan; ketik 'exit' untuk keluar.")
 
     try:
         while not stop_event.is_set():
             try:
-                message = input(f"\n{local_name}: ")
-            except (EOFError, KeyboardInterrupt):
+                message = input_queue.get(timeout=0.1)
+            except Empty:
+                continue
+
+            if message is None:
                 break
 
             if message.lower() == "exit":
+                connection.sendall(frame_message(encrypt_message("exit", key)))
+                exit_event.set()
                 break
 
             encoded_message = encrypt_message(message, key)
@@ -68,3 +93,5 @@ def run_chat(connection, local_name, remote_name, key=KEY):
         connection.close()
         receiver_thread.join(timeout=1)
         print("Koneksi ditutup.")
+
+    return exit_event.is_set()
