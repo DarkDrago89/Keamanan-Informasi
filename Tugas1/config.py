@@ -8,5 +8,5 @@ RECEIVER_HOST = "0.0.0.0"
 RECEIVER_PORT = 5000
 
 # Key harus sama persis di komputer sender dan receiver serta berukuran 8 byte.
-KEY = b"12345678"
+KEY = b"testkey1"
 MAX_MESSAGE_SIZE = 1_048_576
