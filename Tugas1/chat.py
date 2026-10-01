@@ -10,6 +10,7 @@ from encryption import decrypt_message, encrypt_message, frame_message, receive_
 def run_chat(connection, local_name, remote_name, key=KEY):
     """Send and receive encrypted messages until either side closes."""
     stop_event = threading.Event()
+    exit_event = threading.Event()
     print_lock = threading.Lock()
 
     def receive_messages():
@@ -27,6 +28,10 @@ def run_chat(connection, local_name, remote_name, key=KEY):
                     print(f"\nCiphertext diterima dari {remote_name}:")
                     print(encoded_message.decode("ascii"))
                     print(f"Plaintext dari {remote_name}: {plaintext}")
+                if plaintext.strip().lower() == "exit":
+                    exit_event.set()
+                    stop_event.set()
+                    return
             except (ConnectionError, OSError, ValueError, UnicodeDecodeError) as error:
                 if not stop_event.is_set():
                     with print_lock:
@@ -48,9 +53,6 @@ def run_chat(connection, local_name, remote_name, key=KEY):
             except (EOFError, KeyboardInterrupt):
                 break
 
-            if message.lower() == "exit":
-                break
-
             encoded_message = encrypt_message(message, key)
             if len(encoded_message) > MAX_MESSAGE_SIZE:
                 print("Pesan terlalu besar untuk dikirim.")
@@ -60,6 +62,9 @@ def run_chat(connection, local_name, remote_name, key=KEY):
             with print_lock:
                 print("Ciphertext yang dikirim:")
                 print(encoded_message.decode("ascii"))
+            if message.strip().lower() == "exit":
+                exit_event.set()
+                break
     except (ConnectionError, OSError) as error:
         print(f"Gagal mengirim pesan: {error}")
     finally:
@@ -71,3 +76,4 @@ def run_chat(connection, local_name, remote_name, key=KEY):
         connection.close()
         receiver_thread.join(timeout=1)
         print("Koneksi ditutup.")
+        return exit_event.is_set()
